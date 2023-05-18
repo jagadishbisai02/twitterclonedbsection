@@ -28,6 +28,47 @@ const initializeDBAndServer = async () => {
 
 initializeDBAndServer();
 
+//Authorization
+const authenticateToken = (request, response, next) => {
+  const { tweet } = request.body;
+  const { tweetId } = request.params;
+  let jwtToken;
+  const authHeader = request.headers["authorization"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (jwtToken === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "My_Secrete", (error, payload) => {
+      if (error) {
+        response.send("Invalid JWT Token");
+      } else {
+        request.payload = payload;
+        request.tweetId = tweetId;
+        request.tweet = tweet;
+        next();
+      }
+    });
+  }
+};
+
+//
+const getFollowingPeopleIdsOfUser = async (username) => {
+  const getTheFollowingPeopleQuery = `SELECT 
+    follower_user_id
+    FROM
+    follower INNER JOIN user ON user.user_id = follower.follower_user_id
+    WHERE
+    user.username=${username};`;
+  const followingPeople = await db.all(getTheFollowingPeopleQuery);
+  const followingIds = followingPeople.map(
+    (eachUser) => eachUser.following_user_id
+  );
+  return followingIds;
+};
+
 //create API User
 app.post("/register/", async (request, response) => {
   const { username, password, name, gender } = request.body;
@@ -82,47 +123,26 @@ app.post("/login/", async (request, response) => {
   }
 });
 
-//Authorization
-const authenticateToken = (request, response, next) => {
-  const { tweet } = request.body;
-  const { tweetId } = request.params;
-  let jwtToken;
-  const authHeader = request.headers["authorization"];
-  if (authHeader !== undefined) {
-    jwtToken = authHeader.split(" ")[1];
-  }
-  if (jwtToken === undefined) {
-    response.status(401);
-    response.send("Invalid JWT Token");
-  } else {
-    jwt.verify(jwtToken, "My_Secrete", (error, payload) => {
-      if (error) {
-        response.send("Invalid JWT Token");
-      } else {
-        request.payload = payload;
-        request.tweetId = tweetId;
-        request.tweet = tweet;
-        next();
-      }
-    });
-  }
-};
-
 //tweet feed API-3
 app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
-  const { payload } = request;
-  const { user_id, name, username, gender } = payload;
-  const userDetails = `
-    SELECT 
-    username, tweet, date_time As dateTime 
-    FROM 
-    follower INNER JOIN tweet ON following.following_user_id = tweet.user_id INNER JOIN user ON user.user_id = follower.following_user_id
-    WHERE 
-    follower.follower_user_id = ${user_id}
-    ORDER BY 
-    date_time DESC
-    LIMIT 4;`;
-  const tweetQuery = await db.all(userDetails);
+  const { username } = request;
+
+  const followingIds = await getFollowingPeopleIdsOfUser(username);
+  const getTweetsQuery = `
+SELECT
+user.username, tweet.tweet, tweet.date_time AS dateTime
+FROM
+follower
+INNER JOIN tweet
+ON follower.following_user_id = tweet.user_id
+INNER JOIN user
+ON tweet.user_id = user.user_id
+WHERE
+follower.follower_user_id = ${followingIds}
+ORDER BY
+tweet.date_time DESC
+LIMIT 4;`;
+  const tweetQuery = await db.all(getTweetsQuery);
   response.send(tweetQuery);
 });
 
