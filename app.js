@@ -128,37 +128,44 @@ app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
   const { username } = request;
 
   const followingIds = await getFollowingPeopleIdsOfUser(username);
-  const getTweetsQuery = `
-SELECT
-user.username, tweet.tweet, tweet.date_time AS dateTime
-FROM
-follower
-INNER JOIN tweet
-ON follower.following_user_id = tweet.user_id
-INNER JOIN user
-ON tweet.user_id = user.user_id
-WHERE
-follower.follower_user_id = ${followingIds}
-ORDER BY
-tweet.date_time DESC
-LIMIT 4;`;
-  const tweetQuery = await db.all(getTweetsQuery);
-  response.send(tweetQuery);
+  console.log(followingIds);
+  try {
+    const getTweetsQuery = `
+    SELECT
+    username, tweet, date_time AS dateTime
+    FROM
+    user
+    INNER JOIN tweet
+    ON user.user_id = tweet.user_id
+    WHERE
+    user.user_id IN (${followingIds})
+    ORDER BY
+    tweet.date_time DESC
+    LIMIT 4;`;
+    const tweetQuery = await db.all(getTweetsQuery);
+    response.send(tweetQuery);
+  } catch (e) {
+    console.log(`DB Error: ${e.message}`);
+  }
 });
 
 //API-4
 app.get("/user/following/", authenticateToken, async (request, response) => {
   const { payload } = request;
   const { user_id, name, username, gender } = payload;
-  const userDetails = `
+  try {
+    const userDetails = `
     SELECT 
         name 
     FROM 
-        user INNER JOIN follower ON user.user_id = follower.following_user_id
+        user INNER JOIN follower ON user.user_id = follower.follower_user_id
     WHERE 
         follower.follower_user_id = ${user_id};`;
-  const userFollower = await db.all(userDetails);
-  response.send(userFollower);
+    const userFollower = await db.all(userDetails);
+    response.send(userFollower);
+  } catch (e) {
+    console.log(`DB Error: ${e.message}`);
+  }
 });
 
 //API-5
