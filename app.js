@@ -113,7 +113,7 @@ app.post("/login/", async (request, response) => {
   } else {
     const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
     if (isPasswordMatched === true) {
-      const payload = { username: username };
+      const payload = { username: username, userId: 1 };
       const jwtToken = jwt.sign(payload, "My_Secrete");
       response.send({ jwtToken });
     } else {
@@ -126,7 +126,6 @@ app.post("/login/", async (request, response) => {
 //tweet feed API-3
 app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
   const { username } = request.payload;
-
   const followingIds = await getFollowingPeopleIdsOfUser(username);
   try {
     const getTweetsQuery = `
@@ -150,17 +149,16 @@ app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
 
 //API-4
 app.get("/user/following/", authenticateToken, async (request, response) => {
-  const { payload } = request;
-  const { user_id, name, username, gender } = payload;
-  console.log(payload);
+  const { username } = request.payload;
+  const followingIds = await getFollowingPeopleIdsOfUser(username);
   try {
     const userDetails = `
     SELECT 
-        username 
+        name 
     FROM 
-        user INNER JOIN follower ON user.user_id = follower.following_user_id
+        follower INNER JOIN user ON user.user_id = follower.follower_user_id
     WHERE 
-        follower.following_user_id = '${user_id}';`;
+        follower.following_user_id = '${followingIds}';`;
     const userFollower = await db.all(userDetails);
     response.send(userFollower);
   } catch (e) {
