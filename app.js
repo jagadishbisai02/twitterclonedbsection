@@ -130,15 +130,17 @@ app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
   try {
     const getTweetsQuery = `
     SELECT
-    username, tweet, date_time AS dateTime
+        user.username, tweet.tweet, tweet.date_time AS dateTime
     FROM
-    user
-    INNER JOIN tweet
-    ON user.user_id = tweet.user_id
+        follower
+        INNER JOIN tweet
+        ON follower.following_user_id = tweet.user_id
+        INNER JOIN user
+        ON tweet.user_id = user.user_id
     WHERE
-    user.user_id IN (${user_id})
+        follower.follower_user_id = ${user_id}
     ORDER BY
-    tweet.date_time DESC
+        tweet.date_time DESC
     LIMIT 4;`;
     const tweetQuery = await db.all(getTweetsQuery);
     response.send(tweetQuery);
