@@ -197,8 +197,6 @@ app.get("/tweets/:tweetId/", authenticateToken, async (request, response) => {
         tweet_id = '${tweetId}';`;
   const tweetQuery = await db.all(getTweetQuery);
 
-  console.log(tweetQuery);
-
   //
   const userDetails = `
     SELECT 
@@ -353,7 +351,33 @@ app.post("/user/tweets/", authenticateToken, async (request, response) => {
 });
 
 //API-11
-app.delete(
+app.delete("/tweets/:tweetId/", async (request, response) => {
+  const { tweetId } = request.params;
+  const { user_id } = request.payload;
+  const getTweetQuery = `
+    SELECT
+      *
+    FROM
+      tweet
+    WHERE tweet_id = ${tweetId}
+    `;
+  const tweet = await db.get(getTweetQuery);
+  const { user_id } = tweet;
+  if (user_id === user_id) {
+    const deleteTweetQuery = `
+      DELETE FROM
+        tweet
+      WHERE tweet_id = ${tweetId}
+      `;
+    await db.run(deleteTweetQuery);
+    response.send("Tweet Removed");
+  } else {
+    response.status(401);
+    response.send("Invalid Request");
+  }
+});
+
+/*app.delete(
   "/tweets/:tweetId/",
   authenticateToken,
   async (request, response) => {
@@ -381,6 +405,6 @@ app.delete(
       console.log(`DB Error: ${e.message}`);
     }
   }
-);
+);*/
 
 module.exports = app;
