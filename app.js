@@ -84,7 +84,7 @@ app.post("/register/", async (request, response) => {
       user(username, password, name, gender)
       VALUES(
           '${username}',
-          '${password}',
+          '${hashedPassword}',
           '${name}',
           '${gender}'
       );`;
@@ -288,7 +288,7 @@ app.get(
         INNER JOIN reply ON reply.tweet_id = tweet.tweet_id 
         INNER JOIN user ON user.user_id = reply.user_id
     WHERE 
-        tweet_id = ${tweetId} AND follower.follower_user_id = ${user_id};`;
+        tweet_id = '${tweetId}' AND follower.follower_user_id = '${user_id}';`;
       const repliedUser = await db.all(getReplyUserQuery);
       if (repliedUser.length !== 0) {
         let replies = [];
@@ -366,13 +366,13 @@ app.delete(
       FROM tweet 
       WHERE 
       tweet.user_id='${user_id}' AND tweet.tweet_id = '${tweetId}';`;
-      const tweetUser = await bd.all(selectedUserQuery);
+      const tweetUser = await db.run(selectedUserQuery);
       if (tweetUser.length !== 0) {
         const deleteTweetQuery = `DELETE FROM tweet
     WHERE 
     tweet.user_id = '${user_id}' AND tweet.tweet_id = '${tweetId}'`;
         await db.run(deleteTweetQuery);
-        response.send("Deleted a Tweet");
+        response.send("Tweet Removed");
       } else {
         response.status(401);
         response.send("Invalid Request");
